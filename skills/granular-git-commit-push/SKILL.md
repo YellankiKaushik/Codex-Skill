@@ -7,7 +7,7 @@ description: Safely inspect or reconstruct a Git codebase from screenshots, term
 
 ## Operating contract
 
-Work only from real evidence. Do not create empty commits, edit files merely to create more commits, alter timestamps, discard local work, rebuild history, force-push automatically, or silently stage unrelated files. One independent changed file normally becomes one commit, but preserve logical renames/moves and tightly coupled changes as one unit. Prefer Windows PowerShell unless the user asks for another shell.
+Work only from real evidence. Do not create empty commits, edit files merely to create more commits, alter timestamps, discard local work, rebuild history, force-push automatically, or silently stage unrelated files. One independent changed file normally becomes one commit. Prefer Windows PowerShell unless the user asks for another shell.
 
 ## Choose the mode
 
@@ -34,7 +34,9 @@ Expand untracked directories recursively with Git, for example `git ls-files --o
 
 ## Build the commit plan
 
-Read [references/commit-planning.md](references/commit-planning.md) for the detailed algorithm. Default to one independent file change per commit. Use Git status, Git diff, path names, and project context to write meaningful Conventional Commit messages. Preserve moves as one commit by staging the old and new paths together; do not split a single move into artificial delete/add commits.
+Read [references/commit-planning.md](references/commit-planning.md) for the detailed algorithm. Default hard preference: one independent file equals one commit. A file with multiple internal edits still normally remains one file-level commit; do not split it with hunk, patch, or interactive staging merely to increase granularity. Do not group implementation with tests, docs with code, or several files from the same new directory just because they are related. Relatedness alone is not enough to group files.
+
+Use this precedence: first preserve a genuine rename/move as one logical operation; otherwise prefer exactly one file per commit; group files only for unavoidable atomicity; never use hunk-level splitting solely for additional granularity. One file should not normally appear in more than one generated commit during a single run. Use Git status, Git diff, path names, and project context to write meaningful Conventional Commit messages.
 
 ## Execute or generate PowerShell
 
