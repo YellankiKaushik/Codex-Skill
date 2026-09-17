@@ -49,6 +49,7 @@ function Test-YamlLikeFile {
 
 $required = @(
     "plugin.json",
+    ".agents/plugins/marketplace.json",
     ".codex-plugin/plugin.json",
     "skills/granular-git-commit-push/SKILL.md",
     "skills/granular-git-commit-push/agents/openai.yaml",
@@ -79,6 +80,24 @@ foreach ($relative in $required) {
 foreach ($json in @("plugin.json", ".codex-plugin/plugin.json")) {
     $path = Join-Path $PluginRoot $json
     if (Test-Path -LiteralPath $path) { Test-JsonFile $path }
+}
+
+$marketplacePath = Join-Path $PluginRoot ".agents/plugins/marketplace.json"
+if (Test-Path -LiteralPath $marketplacePath) {
+    Test-JsonFile $marketplacePath
+    $marketplace = Get-Content -LiteralPath $marketplacePath -Raw | ConvertFrom-Json
+    if ($marketplace.name -ne "codex-skill") { Add-Failure "Marketplace name must be codex-skill." }
+    if ($marketplace.interface.displayName -ne "Codex Skill") { Add-Failure "Marketplace display name must be Codex Skill." }
+    if ($marketplace.plugins.Count -ne 1) { Add-Failure "Marketplace should expose exactly one plugin." }
+    else {
+        $entry = $marketplace.plugins[0]
+        if ($entry.name -ne "granular-git-commit-push") { Add-Failure "Marketplace plugin entry has wrong name." }
+        if ($entry.source.source -ne "local") { Add-Failure "Marketplace source.source must be local." }
+        if ($entry.source.path -ne "./") { Add-Failure "Marketplace source.path must point at repo plugin root with ./." }
+        if ($entry.policy.installation -ne "AVAILABLE") { Add-Failure "Marketplace installation policy must be AVAILABLE." }
+        if ($entry.policy.authentication -ne "ON_INSTALL") { Add-Failure "Marketplace authentication policy must be ON_INSTALL." }
+        if ($entry.category -ne "Developer Tools") { Add-Failure "Marketplace category must be Developer Tools." }
+    }
 }
 
 foreach ($yamlLike in @("skills/granular-git-commit-push/SKILL.md", "skills/granular-git-commit-push/agents/openai.yaml")) {
