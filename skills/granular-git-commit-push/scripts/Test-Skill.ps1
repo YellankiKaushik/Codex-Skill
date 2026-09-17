@@ -68,6 +68,17 @@ $required = @(
     "SECURITY.md",
     "LICENSE",
     ".gitignore"
+    "pyproject.toml",
+    "src/granular_git_commit_push/__init__.py",
+    "src/granular_git_commit_push/cli.py",
+    "docs/CLI.md",
+    "docs/INSTALL.md",
+    "docs/AGENTS.md",
+    "docs/COMPATIBILITY.md",
+    "docs/PERMANENT_PROMPT.md",
+    "docs/ARCHITECTURE.md",
+    ".github/workflows/test.yml",
+    "scripts/install.ps1"
 )
 
 foreach ($relative in $required) {
@@ -112,6 +123,16 @@ foreach ($link in $links) {
     if (-not (Test-Path -LiteralPath $target)) {
         Add-Failure "Broken SKILL.md reference: $($link.Groups[1].Value)"
     }
+}
+
+$duplicateSkill = Join-Path $PluginRoot ".agents/skills/granular-git-commit-push/SKILL.md"
+if (Test-Path -LiteralPath $duplicateSkill) {
+    Add-Failure "Do not maintain a second canonical SKILL.md under .agents/skills; use ggcp install-skill."
+}
+
+$pyproject = Get-Content -LiteralPath (Join-Path $PluginRoot "pyproject.toml") -Raw
+if ($pyproject -notmatch 'ggcp\s*=\s*"granular_git_commit_push\.cli:main"') {
+    Add-Failure "pyproject.toml must expose ggcp console script."
 }
 
 $scriptFiles = Get-ChildItem -LiteralPath (Join-Path $PluginRoot "skills/granular-git-commit-push/scripts") -Filter "*.ps1" -File
