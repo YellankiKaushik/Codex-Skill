@@ -1,0 +1,37 @@
+{
+  "name": "granular-git-commit-push",
+  "version": "0.1.0",
+  "description": "Safely reconstruct visible code from screenshots when requested, inspect Git changes, create granular one-file-per-commit history, synchronize with the remote, and push without destructive history rewriting.",
+  "author": {
+    "name": "YellankiKaushik",
+    "url": "https://github.com/YellankiKaushik"
+  },
+  "homepage": "https://github.com/YellankiKaushik/Codex-Skill",
+  "repository": "https://github.com/YellankiKaushik/Codex-Skill.git",
+  "license": "MIT",
+  "keywords": [
+    "codex",
+    "skills",
+    "git",
+    "powershell",
+    "screenshots"
+  ],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Granular Git Commit Push",
+    "shortDescription": "Split real Git changes safely",
+    "longDescription": "A Codex skill-only plugin for reconstructing visible files from screenshots when requested, inspecting real Git state, planning granular commits, protecting secrets and staged work, syncing safely, and recovering from partial Git failures.",
+    "developerName": "YellankiKaushik",
+    "category": "Developer Tools",
+    "capabilities": [
+      "Read",
+      "Write"
+    ],
+    "websiteURL": "https://github.com/YellankiKaushik/Codex-Skill",
+    "defaultPrompt": [
+      "Use granular-git-commit-push on this repository.",
+      "Reconstruct visible files, then commit separately.",
+      "Recover my failed granular push safely."
+    ]
+  }
+}
