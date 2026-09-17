@@ -8,7 +8,33 @@ This project creates granular history from real repository changes. It does not 
 
 ## Installation
 
-Install or import this repository as a local Codex plugin. The repository includes both the current portable `plugin.json` and the Codex compatibility `.codex-plugin/plugin.json`; skills live under `skills/`.
+The repository includes the current portable `plugin.json`, the Codex compatibility `.codex-plugin/plugin.json`, and a repo marketplace at `.agents/plugins/marketplace.json`.
+
+### Install from GitHub
+
+Add this repository as a marketplace source:
+
+```powershell
+codex plugin marketplace add YellankiKaushik/Codex-Skill --ref main
+```
+
+Then restart the ChatGPT desktop app, open the Plugins Directory, choose the `Codex Skill` marketplace, install `granular-git-commit-push`, and start a new conversation with the plugin enabled.
+
+If your Codex CLI build supports direct plugin installation from a configured marketplace, you can also try:
+
+```powershell
+codex plugin add granular-git-commit-push@codex-skill
+```
+
+### Local Development Testing
+
+From the local repository root, add the repo as a local marketplace source:
+
+```powershell
+codex plugin marketplace add "C:\Users\YellankiKaushik\Desktop\Projects\Github Skill"
+```
+
+Restart the ChatGPT desktop app, open the Plugins Directory, choose the `Codex Skill` marketplace, install or reinstall `granular-git-commit-push`, and start a new conversation with the plugin enabled. New conversations are important because skills are loaded at session start.
 
 ## Example Prompts
 
@@ -42,7 +68,7 @@ The default rule is:
 ONE INDEPENDENT CHANGED FILE = ONE COMMIT
 ```
 
-This is a default, not commit spam. A logical rename or move stays one commit. Tightly coupled changes may be grouped when splitting them would produce misleading or broken history. Untracked directories are expanded recursively with Git before planning.
+This is a hard default preference, not commit spam. A logical rename or move stays one commit. Relatedness alone is not enough to group files: implementation and test files, docs and code, or several files from the same new directory normally remain separate commits. Group only when splitting would make an individual commit invalid, unusable, or fundamentally misleading. Untracked directories are expanded recursively with Git before planning.
 
 ## Safety
 
