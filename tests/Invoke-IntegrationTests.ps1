@@ -255,6 +255,22 @@ function Get-CommitCount {
     [int](Invoke-Git -Repo $Repo -Args @("rev-list", "--count", "HEAD")).Output[0]
 }
 
+function Get-CommitsSince {
+    param(
+        [string] $Repo,
+        [string] $BaseRevision
+    )
+    @((Invoke-Git -Repo $Repo -Args @("rev-list", "--reverse", "$BaseRevision..HEAD")).Output)
+}
+
+function Get-CommitNameStatus {
+    param(
+        [string] $Repo,
+        [string] $Revision
+    )
+    @((Invoke-Git -Repo $Repo -Args @("diff-tree", "--no-commit-id", "--name-status", "-r", "-M", $Revision)).Output)
+}
+
 function Assert-True {
     param(
         [bool] $Condition,
@@ -285,12 +301,15 @@ Add-Test "multiple modified files" {
 Add-Test "recursively expanded untracked directory" {
     param($root)
     $fixture = New-TestRepository -Root $root
+    $before = (Invoke-Git -Repo $fixture.Repo -Args @("rev-parse", "HEAD")).Output[0]
     Write-TestFile -Path (Join-Path $fixture.Repo "docs\INSTALL.md") -Content "install`n"
     Write-TestFile -Path (Join-Path $fixture.Repo "docs\RELEASE.md") -Content "release`n"
     Write-TestFile -Path (Join-Path $fixture.Repo "docs\STORE.md") -Content "store`n"
     $result = Invoke-GranularWorkflow -Repo $fixture.Repo
     Assert-True $result.Success "workflow failed"
     Assert-True ($result.CreatedCommitCount -eq 3) "expected 3 commits"
+    $commits = Get-CommitsSince -Repo $fixture.Repo -BaseRevision $before
+    Assert-True ($commits.Count -eq 3) "untracked directory files were grouped"
 }
 
 Add-Test "rename/move" {
@@ -442,6 +461,70 @@ Add-Test "screenshot-created files become Git inventory" {
     $result = Invoke-GranularWorkflow -Repo $fixture.Repo
     Assert-True $result.Success "workflow failed"
     Assert-True ($result.CreatedCommitCount -eq 2) "expected 2 reconstructed-file commits"
+}
+
+Add-Test "independent new files stay separate" {
+    param($root)
+    $fixture = New-TestRepository -Root $root
+    Write-TestFile -Path (Join-Path $fixture.Repo "src\one-independent.ts") -Content "export const one = 1;`n"
+    Write-TestFile -Path (Join-Path $fixture.Repo "src\two-independent.ts") -Content "export const two = 2;`n"
+    $result = Invoke-GranularWorkflow -Repo $fixture.Repo
+    Assert-True $result.Success "workflow failed"
+    Assert-True ($result.CreatedCommitCount -eq 2) "two independent new files must not be grouped"
+}
+
+Add-Test "implementation and test stay separate by default" {
+    param($root)
+    $fixture = New-TestRepository -Root $root
+    Write-TestFile -Path (Join-Path $fixture.Repo "src\lib\logger.ts") -Content "export function log(message: string) { return message; }`n"
+    Write-TestFile -Path (Join-Path $fixture.Repo "tests\logger.test.ts") -Content "import { log } from '../src/lib/logger';`nlog('ready');`n"
+    $result = Invoke-GranularWorkflow -Repo $fixture.Repo
+    Assert-True $result.Success "workflow failed"
+    Assert-True ($result.CreatedCommitCount -eq 2) "implementation and test were grouped"
+}
+
+Add-Test "single modified file is not split" {
+    param($root)
+    $fixture = New-TestRepository -Root $root
+    Write-TestFile -Path (Join-Path $fixture.Repo "src\app.txt") -Content "line one changed`nline two changed`nline three changed`n"
+    $result = Invoke-GranularWorkflow -Repo $fixture.Repo
+    Assert-True $result.Success "workflow failed"
+    Assert-True ($result.CreatedCommitCount -eq 1) "one modified file should not be split across commits"
+}
+
+Add-Test "known black-box fixture creates ten file-level commits" {
+    param($root)
+    $fixture = New-TestRepository -Root $root
+    Write-TestFile -Path (Join-Path $fixture.Repo "src\App.tsx") -Content "export function App() { return 'baseline'; }`n"
+    Write-TestFile -Path (Join-Path $fixture.Repo "src\components\Header.tsx") -Content "export function Header() { return 'header'; }`n"
+    Write-TestFile -Path (Join-Path $fixture.Repo "docs\INSTALL.md") -Content "# Install`n"
+    Write-TestFile -Path (Join-Path $fixture.Repo "docs\RELEASE.md") -Content "# Release`n"
+    Invoke-Git -Repo $fixture.Repo -Args @("add", "--", "src/App.tsx", "src/components/Header.tsx", "docs/INSTALL.md", "docs/RELEASE.md") | Out-Null
+    Invoke-Git -Repo $fixture.Repo -Args @("commit", "-m", "chore: prepare black-box fixture") | Out-Null
+    Invoke-Git -Repo $fixture.Repo -Args @("push", "origin", "main") | Out-Null
+    $before = (Invoke-Git -Repo $fixture.Repo -Args @("rev-parse", "HEAD")).Output[0]
+
+    Write-TestFile -Path (Join-Path $fixture.Repo "README.md") -Content "# Test Repo`n`nUpdated README for black-box fixture.`n"
+    Write-TestFile -Path (Join-Path $fixture.Repo "src\App.tsx") -Content "import { createLogger } from './lib/logger';`nexport function App() { return createLogger('app').info('ready'); }`n"
+    Write-TestFile -Path (Join-Path $fixture.Repo "src\components\Header.tsx") -Content "export function Header() { return 'updated header'; }`n"
+    Write-TestFile -Path (Join-Path $fixture.Repo "src\lib\logger.ts") -Content ('export function createLogger(scope: string) { return { info: (message: string) => `[${scope}] ${message}` }; }' + "`n")
+    Write-TestFile -Path (Join-Path $fixture.Repo "tests\logger.test.ts") -Content "import { createLogger } from '../src/lib/logger';`ncreateLogger('test').info('ready');`n"
+    New-Item -ItemType Directory -Path (Join-Path $fixture.Repo "docs\guides") -Force | Out-Null
+    Move-Item -LiteralPath (Join-Path $fixture.Repo "docs\INSTALL.md") -Destination (Join-Path $fixture.Repo "docs\guides\INSTALL.md")
+    Remove-Item -LiteralPath (Join-Path $fixture.Repo "docs\RELEASE.md")
+    Write-TestFile -Path (Join-Path $fixture.Repo "examples\README.md") -Content "# Examples`n"
+    Write-TestFile -Path (Join-Path $fixture.Repo "examples\basic.ts") -Content "export const basic = true;`n"
+    Write-TestFile -Path (Join-Path $fixture.Repo "examples\advanced.ts") -Content "export const advanced = true;`n"
+
+    $result = Invoke-GranularWorkflow -Repo $fixture.Repo
+    Assert-True $result.Success "workflow failed"
+    Assert-True ($result.CreatedCommitCount -eq 10) "known fixture must create exactly 10 file-level commits"
+    $commits = @(Get-CommitsSince -Repo $fixture.Repo -BaseRevision $before)
+    Assert-True ($commits.Count -eq 10) "expected 10 commits after baseline"
+    foreach ($commit in $commits) {
+        $nameStatus = @(Get-CommitNameStatus -Repo $fixture.Repo -Revision $commit)
+        Assert-True ($nameStatus.Count -eq 1) "commit $commit grouped multiple file-level operations: $($nameStatus -join '; ')"
+    }
 }
 
 $results = New-Object System.Collections.Generic.List[object]
