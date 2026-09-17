@@ -1,0 +1,4 @@
+interface:
+  display_name: "Granular Git Commit Push"
+  short_description: "Split real Git changes safely"
+  default_prompt: "Use $granular-git-commit-push to inspect my repository changes, plan one meaningful commit per independent file where practical, and push safely."
