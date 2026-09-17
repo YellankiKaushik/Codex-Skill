@@ -24,6 +24,8 @@ Before filesystem access, rely on user-supplied screenshots, terminal output, fi
 
 ## Build the change inventory
 
+Prefer the deterministic `ggcp` CLI when it is installed. First run `ggcp doctor --json`, then `ggcp inspect --json`, then `ggcp plan --json`. Use the CLI output as the machine-readable source for repository state and the baseline commit plan. If `ggcp` is not installed or fails because the package is unavailable, fall back to direct Git inspection and the bundled PowerShell helpers.
+
 Inspect the repository before planning. Use read-only helpers when useful:
 
 - [scripts/Test-GitEnvironment.ps1](scripts/Test-GitEnvironment.ps1) for repository, branch, origin, operation-in-progress, staged-work, and status checks.
@@ -34,13 +36,13 @@ Expand untracked directories recursively with Git, for example `git ls-files --o
 
 ## Build the commit plan
 
-Read [references/commit-planning.md](references/commit-planning.md) for the detailed algorithm. Default hard preference: one independent file equals one commit. A file with multiple internal edits still normally remains one file-level commit; do not split it with hunk, patch, or interactive staging merely to increase granularity. Do not group implementation with tests, docs with code, or several files from the same new directory just because they are related. Relatedness alone is not enough to group files.
+Read [references/cli-integration.md](references/cli-integration.md) when `ggcp` is available, and read [references/commit-planning.md](references/commit-planning.md) for the detailed algorithm. Default hard preference: one independent file equals one commit. A file with multiple internal edits still normally remains one file-level commit; do not split it with hunk, patch, or interactive staging merely to increase granularity. Do not group implementation with tests, docs with code, or several files from the same new directory just because they are related. Relatedness alone is not enough to group files.
 
 Use this precedence: first preserve a genuine rename/move as one logical operation; otherwise prefer exactly one file per commit; group files only for unavoidable atomicity; never use hunk-level splitting solely for additional granularity. One file should not normally appear in more than one generated commit during a single run. Use Git status, Git diff, path names, and project context to write meaningful Conventional Commit messages.
 
 ## Execute or generate PowerShell
 
-Read [references/powershell-generation.md](references/powershell-generation.md) when generating or running a full workflow. Use targeted staging only, check `$LASTEXITCODE` after important native commands, stop after meaningful failures, count created commits dynamically, fetch before push, rebase safely when appropriate, and use `git --no-pager log --oneline -20` for final verification.
+Use `ggcp validate-plan` and `ggcp execute` for deterministic Git mechanics when available and when user intent permits mutation. The agent may improve only semantic commit messages or justified grouping in the JSON plan before validation. Read [references/powershell-generation.md](references/powershell-generation.md) when generating or running a fallback PowerShell workflow. Use targeted staging only, check `$LASTEXITCODE` after important native commands, stop after meaningful failures, count created commits dynamically, fetch before push, rebase safely when appropriate, and use `git --no-pager log --oneline -20` for final verification.
 
 ## Verify before push
 
@@ -60,5 +62,7 @@ Preserve already-created commits. Determine whether changes are uncommitted, com
 - [references/screenshot-reconstruction.md](references/screenshot-reconstruction.md): screenshot evidence and file reconstruction rules.
 - [references/git-safety.md](references/git-safety.md): staging, secrets, remote, and prohibited-operation safety rules.
 - [references/commit-planning.md](references/commit-planning.md): granular commit planning and messages.
+- [references/cli-integration.md](references/cli-integration.md): deterministic `ggcp` CLI workflow and plan handoff.
+- [references/agent-compatibility.md](references/agent-compatibility.md): cross-agent installation and compatibility notes.
 - [references/powershell-generation.md](references/powershell-generation.md): paste-ready Windows PowerShell workflow rules.
 - [references/recovery.md](references/recovery.md): partial-success and failure recovery procedures.
