@@ -1,0 +1,40 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "granular-git-commit-push"
+version = "0.2.0"
+description = "Deterministic Git inventory, planning, and execution engine plus Agent Skill for granular commits and safe pushes."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [
+  { name = "YellankiKaushik" }
+]
+keywords = ["agent-skills", "git", "codex", "cli", "commits"]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Environment :: Console",
+  "Intended Audience :: Developers",
+  "License :: OSI Approved :: MIT License",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Topic :: Software Development :: Version Control :: Git"
+]
+
+[project.urls]
+Homepage = "https://github.com/YellankiKaushik/Codex-Skill"
+Repository = "https://github.com/YellankiKaushik/Codex-Skill.git"
+
+[project.scripts]
+ggcp = "granular_git_commit_push.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+granular_git_commit_push = ["py.typed"]
