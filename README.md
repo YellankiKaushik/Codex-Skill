@@ -1,112 +1,167 @@
 # Granular Git Commit Push
 
-Granular Git Commit Push is a Codex skill-only plugin for turning real repository changes into safe, meaningful, high-granularity Git history. It can also help Codex reconstruct visible project files from screenshots when the user explicitly asks for reconstruction.
+Granular Git Commit Push is an Agent Skills-compatible workflow, Codex plugin, and deterministic Git CLI for turning real repository changes into safe, meaningful, high-granularity Git history.
 
-It exists for workflows where a user has screenshots, terminal captures, `git status`, file trees, repository paths, or a local codebase and wants Codex to inspect what is real, plan one independent changed file per commit by default, protect secrets and unrelated work, synchronize with the remote, and push without destructive history rewriting.
+The product separates AI reasoning from deterministic execution:
 
-This project creates granular history from real repository changes. It does not create empty commits, fabricate source changes, rewrite timestamps, or force-push simply to increase contribution counts.
+- AI agents interpret screenshots, source code, user intent, and semantic coupling.
+- The `ggcp` CLI inspects Git, creates and validates plans, stages targeted paths, commits, synchronizes, pushes, and reports recovery state.
+
+The standalone CLI uses no AI API and contains no telemetry.
+
+## Usage Modes
+
+### Mode A: AI Agent Skill
+
+Use an Agent Skills-compatible agent:
+
+```text
+Use granular-git-commit-push on this repository.
+```
+
+The canonical skill lives at `skills/granular-git-commit-push` for Codex plugin compatibility. Install it into the common user skill location with:
+
+```powershell
+ggcp install-skill
+```
+
+### Mode B: AI Agent + ggcp Engine
+
+Agents should prefer deterministic machine-readable commands:
+
+```powershell
+ggcp doctor --json
+ggcp inspect --json
+ggcp plan --output plan.json
+ggcp validate-plan plan.json
+ggcp execute --plan plan.json
+```
+
+Agents may improve commit messages in the plan. They should not group independent files unless atomicity makes separation invalid or misleading.
+
+### Mode C: Standalone Terminal CLI
+
+No AI agent is required:
+
+```powershell
+ggcp doctor
+ggcp inspect
+ggcp plan
+ggcp execute --dry-run
+ggcp execute
+```
 
 ## Installation
 
-The repository includes the current portable `plugin.json`, the Codex compatibility `.codex-plugin/plugin.json`, and a repo marketplace at `.agents/plugins/marketplace.json`.
+From a local checkout:
 
-### Install from GitHub
+```powershell
+python -m pip install .
+ggcp --version
+ggcp doctor
+```
 
-Add this repository as a marketplace source:
+For development:
+
+```powershell
+python -m pip install -e .
+```
+
+With `pipx` from a local checkout:
+
+```powershell
+pipx install .
+```
+
+This project is not claiming PyPI publication. Do not assume `pip install granular-git-commit-push` works from PyPI until a package is actually published.
+
+## Codex Plugin Installation
+
+The repository includes portable plugin metadata, Codex compatibility metadata, and a repo marketplace:
+
+- `plugin.json`
+- `.codex-plugin/plugin.json`
+- `.agents/plugins/marketplace.json`
+
+Add the GitHub repository marketplace:
 
 ```powershell
 codex plugin marketplace add YellankiKaushik/Codex-Skill --ref main
 ```
 
-Then restart the ChatGPT desktop app, open the Plugins Directory, choose the `Codex Skill` marketplace, install `granular-git-commit-push`, and start a new conversation with the plugin enabled.
-
-If your Codex CLI build supports direct plugin installation from a configured marketplace, you can also try:
-
-```powershell
-codex plugin add granular-git-commit-push@codex-skill
-```
-
-### Local Development Testing
-
-From the local repository root, add the repo as a local marketplace source:
+For local development testing:
 
 ```powershell
 codex plugin marketplace add "C:\Users\YellankiKaushik\Desktop\Projects\Github Skill"
 ```
 
-Restart the ChatGPT desktop app, open the Plugins Directory, choose the `Codex Skill` marketplace, install or reinstall `granular-git-commit-push`, and start a new conversation with the plugin enabled. New conversations are important because skills are loaded at session start.
+Restart the desktop app, install `granular-git-commit-push` from the Plugins Directory, and start a new conversation with the plugin enabled.
 
-## Example Prompts
-
-```text
-Use granular-git-commit-push on this repository. Here is my git status.
-```
-
-```text
-Reconstruct the visible project files from these screenshots, then commit each legitimate changed file separately and push safely.
-```
-
-```text
-Again. Here is the new git status.
-```
-
-```text
-The previous run created the commits but push failed. Recover without recreating them.
-```
-
-## Screenshot Reconstruction
-
-The skill supports screenshots of VS Code Explorer, source files, terminals, `git status`, project trees, repository URLs, local paths, and Git errors. It treats visible screenshot content as evidence, never fabricates collapsed folders or invisible code, and avoids overwriting substantial existing files from partial screenshots.
-
-After reconstruction, Codex must inspect the actual filesystem and then use Git as the authority for the resulting change set.
-
-## Commit Behavior
-
-The default rule is:
+## Core Rule
 
 ```text
 ONE INDEPENDENT CHANGED FILE = ONE COMMIT
 ```
 
-This is a hard default preference, not commit spam. A logical rename or move stays one commit. Relatedness alone is not enough to group files: implementation and test files, docs and code, or several files from the same new directory normally remain separate commits. Group only when splitting would make an individual commit invalid, unusable, or fundamentally misleading. Untracked directories are expanded recursively with Git before planning.
+Precedence:
+
+1. Preserve a genuine rename or move as one logical operation.
+2. Otherwise prefer exactly one file per commit.
+3. Group only for unavoidable atomicity.
+4. Never split one file into multiple commits merely for extra granularity.
+
+Implementation and test files, docs and code, or files in the same new directory remain separate by default.
 
 ## Safety
 
-The skill protects existing staged work, uses targeted staging, preserves existing Git history, fetches before push, stops on rebase conflicts, refuses unexpected residual files, and never automatically force-pushes.
+The skill and CLI protect existing staged work, use targeted staging, preserve history, fetch before push, stop on rebase conflicts, and never force-push automatically.
 
-Secret-like paths such as `.env`, `credentials.json`, `*.pem`, `*.key`, `id_rsa`, `secrets.*`, and `firebase-adminsdk*.json` stop the workflow before commit/push. Filename heuristics are not complete secret detection; users should still rely on GitHub secret scanning and repository protections.
+Secret-like paths such as `.env`, `.env.*`, `credentials.json`, `service-account.json`, `*.pem`, `*.key`, `id_rsa`, `id_ed25519`, `secrets.*`, `private-key.*`, and `firebase-adminsdk*.json` block planning/execution. This is a filename heuristic, not complete secret scanning.
 
-## Recovery
+## CLI Commands
 
-If a run partially succeeds, the skill inspects what already happened. Local commits that were created but not pushed are preserved and synchronized; already-pushed commits are not recreated.
+```text
+ggcp --version
+ggcp doctor [--json]
+ggcp inspect [--json]
+ggcp plan [--json] [--output plan.json]
+ggcp validate-plan plan.json
+ggcp execute [--plan plan.json] [--dry-run] [--no-push] [--json]
+ggcp status [--json]
+ggcp recover [--json]
+ggcp install-skill [--copy|--link]
+ggcp uninstall-skill
+ggcp compatibility [--json]
+```
 
-## PowerShell Focus
+See [docs/CLI.md](docs/CLI.md) for schemas and exit codes.
 
-Windows PowerShell is the primary target. The bundled references and helpers emphasize safe Git inventory, targeted staging, `$LASTEXITCODE` checks, no-pager verification, and temporary-repository tests on Windows.
+## Compatibility
+
+The project targets the open Agent Skills format and documents compatibility with OpenAI Codex, GitHub Copilot, Cursor, Gemini CLI, OpenCode, Claude, and generic Agent Skills implementations. See [docs/COMPATIBILITY.md](docs/COMPATIBILITY.md).
+
+For agents without skill support, use [docs/PERMANENT_PROMPT.md](docs/PERMANENT_PROMPT.md) plus the `ggcp` CLI.
 
 ## Testing
 
-Run the skill validation:
+Run the PowerShell validation:
 
 ```powershell
 .\skills\granular-git-commit-push\scripts\Test-Skill.ps1
-```
-
-Run integration tests:
-
-```powershell
 .\tests\Invoke-IntegrationTests.ps1
 ```
 
-The integration tests use temporary repositories and temporary local bare remotes. They do not mutate a real GitHub repository.
+Run Python tests:
+
+```powershell
+python -m unittest discover -s tests -p "test_*.py"
+```
+
+The tests use temporary repositories and temporary local bare remotes. They do not mutate a real GitHub repository.
 
 ## Limitations
 
-Screenshot reconstruction is limited to visible or safely inferable content. Secret detection is path-based and conservative, not a full credential scanner. The first release focuses on Windows PowerShell workflows rather than cross-platform shell generation.
-
-## Contributing
-
-Contributions should keep the safety model intact: real changes only, no fake history generation, no automatic force-push behavior, no automatic deletion of user work, and tests for behavior changes.
+Screenshot reconstruction is limited to visible or safely inferable content. Secret detection is conservative and path-based. Cross-agent compatibility depends on each agent's current Agent Skills implementation.
 
 ## License
 
